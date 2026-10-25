@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isValidReview(review) {
+      return review.keys().hasAll([
+          'name',
+          'course',
+          'rating',
+          'reviewText',
+          'consentToPublish',
+          'status',
+          'createdAt'
+        ])
+        && review.keys().hasOnly([
+          'name',
+          'course',
+          'rating',
+          'reviewText',
+          'consentToPublish',
+          'status',
+          'createdAt'
+        ])
+        && review.name is string
+        && review.name.trim().size() >= 1
+        && review.name.size() <= 100
+        && review.course is string
+        && review.course.trim().size() >= 1
+        && review.course.size() <= 120
+        && review.rating is int
+        && review.rating >= 1
+        && review.rating <= 5
+        && review.reviewText is string
+        && review.reviewText.trim().size() >= 1
+        && review.reviewText.size() <= 2000
+        && review.consentToPublish is bool
+        && review.status == 'pending'
+        && review.createdAt is timestamp
+        && review.createdAt == request.time;
+    }
+
+    match /reviews/{reviewId} {
+      allow get, list: if resource.data.status == 'approved'
+        && resource.data.consentToPublish == true;
+      allow create: if isValidReview(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
